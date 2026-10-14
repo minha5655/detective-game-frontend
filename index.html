@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Files - Mystery Detective Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="game-container">
+
+        <h1>🔎 CASE FILES</h1>
+
+        <p class="subtitle">
+            Mystery Detective Game
+        </p>
+
+        <div id="score-board">
+            🏆 Score: <span id="score">0</span>
+            &nbsp; | &nbsp;
+            Cases Solved: <span id="solved-cases">0</span>
+            &nbsp; | &nbsp;
+            Cases Attempted: <span id="attempted-cases">0</span>
+        </div>
+
+        <div class="reset-container">
+            <button onclick="resetGame()" id="reset-button">
+                🔄 Reset Game
+            </button>
+        </div>
+
+        <div id="rank">
+            🕵️ Rank: Rookie Detective
+        </div>
+
+        <section id="achievements-section">
+            <h2>🏆 Detective Achievements</h2>
+            <div id="achievements-container"></div>
+        </section>
+
+        <div id="case-menu">
+
+            <h2>Select a Case</h2>
+
+            <p class="menu-text">
+                Choose a mystery and begin your investigation.
+            </p>
+
+            <div id="cases-container"></div>
+
+        </div>
+
+        <div id="game-screen" style="display: none;">
+
+            <button onclick="backToCases()" class="back-button">
+                ← Back to Cases
+            </button>
+
+            <h2 id="case-title"></h2>
+
+            <p id="case-story"></p>
+
+            <h3>🔍 Evidence & Clues</h3>
+
+            <div id="clues-container"></div>
+
+            <h3>🕵️ Suspects</h3>
+
+            <div id="suspects-container"></div>
+
+            <button id="accuse-button" onclick="submitAnswer()">
+                Make Final Accusation
+            </button>
+
+            <div id="result"></div>
+
+            <div id="report-section">
+                <button onclick="showReport()" id="report-button">
+                    🏆 View Final Report
+                </button>
+            </div>
+
+            <div id="final-report" style="display: none;">
+
+                <h2>📋 Detective Investigation Report</h2>
+
+                <p>
+                    Total Score:
+                    <span id="final-score">0</span>
+                </p>
+
+                <p>
+                    Cases Solved:
+                    <span id="final-solved">0</span>
+                </p>
+
+                <p>
+                    Cases Attempted:
+                    <span id="final-attempted">0</span>
+                </p>
+
+                <p>
+                    Detective Rank:
+                    <span id="final-rank">Rookie Detective</span>
+                </p>
+
+                <button onclick="closeReport()">
+                    Back to Game
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
