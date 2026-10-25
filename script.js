@@ -1,9 +1,4 @@
-// ==========================================
-// CASE FILES - MYSTERY DETECTIVE GAME
-// ==========================================
-
-// Backend API URL
-const API_URL = "https://detective-game-backend-hrtl.onrender.com/api/cases";
+ const API_URL = "https://detective-game-backend-hrtl.onrender.com";
 
 let currentCase = null;
 let selectedSuspect = "";
@@ -24,11 +19,6 @@ let achievements = JSON.parse(
     localStorage.getItem("achievements") || "[]"
 );
 
-
-// ==========================================
-// RANK SYSTEM
-// ==========================================
-
 function getRank() {
     if (score >= 300) {
         return "Master Detective";
@@ -36,9 +26,9 @@ function getRank() {
         return "Senior Detective";
     } else if (score >= 100) {
         return "Junior Detective";
+    } else {
+        return "Rookie Detective";
     }
-
-    return "Rookie Detective";
 }
 
 function updateRank() {
@@ -67,13 +57,11 @@ function updateScoreboard() {
     }
 
     updateRank();
-    saveProgress();
+
+    localStorage.setItem("detectiveScore", score);
+    localStorage.setItem("solvedCases", solvedCases);
+    localStorage.setItem("attemptedCases", attemptedCases);
 }
-
-
-// ==========================================
-// ACHIEVEMENTS
-// ==========================================
 
 const achievementDetails = {
     first_investigation: {
@@ -147,66 +135,40 @@ function displayAchievements() {
             ? "achievement-card"
             : "achievement-card locked";
 
-        const icon = document.createElement("div");
-        icon.style.fontSize = "30px";
-        icon.textContent = unlocked ? achievement.icon : "🔒";
-
-        const title = document.createElement("h3");
-        title.textContent = achievement.title;
-
-        const description = document.createElement("p");
-        description.textContent = achievement.description;
-
-        const status = document.createElement("strong");
-        status.textContent = unlocked ? "UNLOCKED" : "LOCKED";
-
-        card.appendChild(icon);
-        card.appendChild(title);
-        card.appendChild(description);
-        card.appendChild(status);
+        card.innerHTML = `
+            <div style="font-size: 30px;">
+                ${unlocked ? achievement.icon : "🔒"}
+            </div>
+            <h3>${achievement.title}</h3>
+            <p>${achievement.description}</p>
+            <strong>${unlocked ? "UNLOCKED" : "LOCKED"}</strong>
+        `;
 
         container.appendChild(card);
     });
 }
-
-
-// ==========================================
-// LOAD ALL CASES
-// ==========================================
-
 async function loadCases() {
     const container = document.getElementById("cases-container");
 
     if (!container) {
-        console.error("Cases container not found!");
         return;
     }
 
     container.innerHTML = "<p>Loading cases...</p>";
 
     try {
-        // FIXED: Connect to the hosted backend
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL + "/api/cases");
 
         if (!response.ok) {
-            throw new Error(
-                "Failed to load cases. HTTP status: " + response.status
-            );
+            throw new Error("Failed to load cases");
         }
 
         const cases = await response.json();
 
         container.innerHTML = "";
 
-        if (!Array.isArray(cases) || cases.length === 0) {
-            container.innerHTML = `
-                <p>No cases available yet. Please try again later.</p>
-            `;
-
-            console.warn(
-                "The backend returned no cases. Check the database."
-            );
-
+        if (cases.length === 0) {
+            container.innerHTML = "<p>No cases available.</p>";
             return;
         }
 
@@ -214,40 +176,27 @@ async function loadCases() {
             const card = document.createElement("div");
             card.className = "case-card";
 
-            const caseId = Number(caseItem.id);
+            const isCompleted = completedCaseIds.includes(Number(caseItem.id));
+            const isClosed = closedCaseIds.includes(Number(caseItem.id));
 
-            const isCompleted = completedCaseIds.includes(caseId);
-            const isClosed = closedCaseIds.includes(caseId);
-
-            const title = document.createElement("h3");
-            title.textContent = caseItem.title || "Untitled Case";
-
-            const story = document.createElement("p");
-            story.textContent = caseItem.story || "No story available.";
-
-            card.appendChild(title);
-            card.appendChild(story);
+            let status = "";
 
             if (isCompleted) {
-                const badge = document.createElement("span");
-                badge.className = "solved-badge";
-                badge.textContent = "Solved ✓";
-                card.appendChild(badge);
+                status = "<span class='solved-badge'>Solved ✓</span>";
             } else if (isClosed) {
-                const badge = document.createElement("span");
-                badge.className = "solved-badge";
-                badge.textContent = "Closed";
-                card.appendChild(badge);
+                status = "<span class='solved-badge'>Closed</span>";
             }
 
-            const button = document.createElement("button");
-            button.className = "open-case-button";
+            card.innerHTML = `
+                <h3>${caseItem.title}</h3>
+                <p>${caseItem.story}</p>
+                ${status}
+                <button class="open-case-button">
+                    ${isCompleted ? "Solved" : isClosed ? "Closed" : "Investigate"}
+                </button>
+            `;
 
-            button.textContent = isCompleted
-                ? "Solved"
-                : isClosed
-                    ? "Closed"
-                    : "Investigate";
+            const button = card.querySelector("button");
 
             if (isCompleted || isClosed) {
                 button.disabled = true;
@@ -257,104 +206,100 @@ async function loadCases() {
                 });
             }
 
-            card.appendChild(button);
             container.appendChild(card);
         });
-
     } catch (error) {
         console.error("Error loading cases:", error);
-
-        container.innerHTML = `
-            <p>Unable to load cases. Please try again.</p>
-        `;
+        container.innerHTML = "<p>Unable to load cases. Please try again.</p>";
     }
 }
-
-
-// ==========================================
-// OPEN A CASE
-// ==========================================
-
 async function openCase(caseId) {
-    const numericCaseId = Number(caseId);
-
     if (
-        completedCaseIds.includes(numericCaseId) ||
-        closedCaseIds.includes(numericCaseId)
+        completedCaseIds.includes(Number(caseId)) ||
+        closedCaseIds.includes(Number(caseId))
     ) {
         alert("You have already finished this case!");
         return;
     }
 
     try {
-        // FIXED: Use the hosted backend URL
-        const response = await fetch(
-            API_URL + "/" + encodeURIComponent(caseId)
-        );
+        const response = await fetch(API_URL + "/api/cases/" + caseId);
 
         if (!response.ok) {
-            throw new Error(
-                "Failed to load case. HTTP status: " + response.status
-            );
+            throw new Error("Failed to load case");
         }
 
         currentCase = await response.json();
         selectedSuspect = "";
 
-        const caseMenu = document.getElementById("case-menu");
-        const gameScreen = document.getElementById("game-screen");
+        document.getElementById("case-menu").style.display = "none";
+        document.getElementById("game-screen").style.display = "block";
 
-        if (caseMenu) {
-            caseMenu.style.display = "none";
-        }
-
-        if (gameScreen) {
-            gameScreen.style.display = "block";
-        }
-
-        const titleElement = document.getElementById("case-title");
-        const storyElement = document.getElementById("case-story");
-        const resultElement = document.getElementById("result");
-
-        if (titleElement) {
-            titleElement.textContent = currentCase.title || "Untitled Case";
-        }
-
-        if (storyElement) {
-            storyElement.textContent = currentCase.story || "";
-        }
-
-        if (resultElement) {
-            resultElement.innerHTML = "";
-            resultElement.className = "";
-        }
+        document.getElementById("case-title").textContent = currentCase.title;
+        document.getElementById("case-story").textContent = currentCase.story;
+        document.getElementById("result").innerHTML = "";
 
         displaySuspects();
-
         await loadClues(caseId);
-
     } catch (error) {
         console.error("Error opening case:", error);
-
         alert("Unable to open this case. Please try again.");
     }
 }
-
-
-// ==========================================
-// DISPLAY SUSPECTS
-// ==========================================
 
 function displaySuspects() {
     const container = document.getElementById("suspects-container");
 
     if (!container || !currentCase) {
-        console.error("Suspects container or current case not found!");
         return;
     }
 
     container.innerHTML = "";
-    selectedSuspect = "";
+
+    const suspects = [
+        currentCase.suspect1,
+        currentCase.suspect2,
+        currentCase.suspect3,
+        currentCase.suspect4
+    ];
+
+    suspects.forEach(function (suspect) {
+        if (!suspect) {
+            return;
+        }
+
+        const label = document.createElement("label");
+        label.className = "suspect-option";
+
+        const radio = document.createElement("input");
+        radio.type = "radio";
+        radio.name = "suspect";
+        radio.value = suspect;
+
+        radio.addEventListener("change", function () {
+            selectedSuspect = suspect;
+        });
+
+        label.appendChild(radio);
+        label.appendChild(document.createTextNode(" " + suspect));
+
+        container.appendChild(label);
+    });
+}
+function displaySuspects() {
+    const container = document.getElementById("suspects-container");
+
+    if (!container) {
+        console.error("Suspects container not found!");
+        return;
+    }
+
+    if (!currentCase) {
+        console.error("No case selected!");
+        return;
+    }
+
+    container.innerHTML = "";
 
     const suspects = [
         currentCase.suspect1,
@@ -391,39 +336,27 @@ function displaySuspects() {
 
     console.log("Suspects displayed:", suspects);
 }
-
-
-// ==========================================
-// LOAD CLUES
-// ==========================================
-
 async function loadClues(caseId) {
     const container = document.getElementById("clues-container");
 
     if (!container) {
-        console.error("Clues container not found!");
         return;
     }
 
     container.innerHTML = "<p>Loading clues...</p>";
 
     try {
-        // FIXED: Use the hosted backend URL
-        const response = await fetch(
-            API_URL + "/" + encodeURIComponent(caseId) + "/clues"
-        );
+        const response = await fetch(API_URL + "/api/cases/" + caseId + "/clues");
 
         if (!response.ok) {
-            throw new Error(
-                "Failed to load clues. HTTP status: " + response.status
-            );
+            throw new Error("Failed to load clues");
         }
 
         const clues = await response.json();
 
         container.innerHTML = "";
 
-        if (!Array.isArray(clues) || clues.length === 0) {
+        if (clues.length === 0) {
             container.innerHTML = "<p>No clues available.</p>";
             return;
         }
@@ -436,27 +369,18 @@ async function loadClues(caseId) {
             heading.textContent = "🔎 Clue " + (index + 1);
 
             const description = document.createElement("p");
-            description.textContent = clue.description || "No description available.";
+            description.textContent = clue.description;
 
             clueElement.appendChild(heading);
             clueElement.appendChild(description);
 
             container.appendChild(clueElement);
         });
-
     } catch (error) {
         console.error("Error loading clues:", error);
-
-        container.innerHTML = `
-            <p>Unable to load clues. Please try again.</p>
-        `;
+        container.innerHTML = "<p>Unable to load clues. Please try again.</p>";
     }
 }
-
-
-// ==========================================
-// DISPLAY RESULT
-// ==========================================
 
 function showResult(message, isCorrect) {
     const resultElement = document.getElementById("result");
@@ -466,16 +390,8 @@ function showResult(message, isCorrect) {
     }
 
     resultElement.textContent = message;
-
-    resultElement.className = isCorrect
-        ? "correct-result"
-        : "wrong-result";
+    resultElement.className = isCorrect ? "correct-result" : "wrong-result";
 }
-
-
-// ==========================================
-// SAVE GAME PROGRESS
-// ==========================================
 
 function saveProgress() {
     localStorage.setItem("detectiveScore", score);
@@ -497,11 +413,6 @@ function saveProgress() {
         JSON.stringify(achievements)
     );
 }
-
-
-// ==========================================
-// SUBMIT ANSWER
-// ==========================================
 
 function submitAnswer() {
     if (!currentCase) {
@@ -564,7 +475,6 @@ function submitAnswer() {
                 unlockAchievement("perfect_investigator");
             }
         }
-
     } else {
         score -= 25;
 
@@ -579,34 +489,23 @@ function submitAnswer() {
     displayAchievements();
     loadCases();
 }
-
-
-// ==========================================
-// RETURN TO CASE LIST
-// ==========================================
-
 function backToCases() {
     currentCase = null;
     selectedSuspect = "";
 
     const gameScreen = document.getElementById("game-screen");
-    const caseMenu = document.getElementById("case-menu");
+    const caseMenu = document.getElementById("case-list");
 
     if (gameScreen) {
         gameScreen.style.display = "none";
     }
 
     if (caseMenu) {
-        caseMenu.style.display = "block";
+        caseMenu.style.display = "grid";
     }
 
     loadCases();
 }
-
-
-// ==========================================
-// RESET GAME
-// ==========================================
 
 function resetGame() {
     const confirmed = confirm(
@@ -625,9 +524,6 @@ function resetGame() {
     closedCaseIds = [];
     achievements = [];
 
-    currentCase = null;
-    selectedSuspect = "";
-
     localStorage.removeItem("detectiveScore");
     localStorage.removeItem("solvedCases");
     localStorage.removeItem("attemptedCases");
@@ -635,24 +531,25 @@ function resetGame() {
     localStorage.removeItem("closedCaseIds");
     localStorage.removeItem("achievements");
 
-    const gameScreen = document.getElementById("game-screen");
-    const caseMenu = document.getElementById("case-menu");
+    currentCase = null;
+    selectedSuspect = "";
 
+    const gameScreen = document.getElementById("game-screen");
+    const caseMenu = document.getElementById("case-list");
     const resultElement = document.getElementById("result");
-    const cluesElement = document.getElementById("clues-container");
-    const suspectsElement = document.getElementById("suspects-container");
+    const cluesElement = document.getElementById("clues");
+    const suspectsElement = document.getElementById("suspects");
 
     if (gameScreen) {
         gameScreen.style.display = "none";
     }
 
     if (caseMenu) {
-        caseMenu.style.display = "block";
+        caseMenu.style.display = "grid";
     }
 
     if (resultElement) {
         resultElement.innerHTML = "";
-        resultElement.className = "";
     }
 
     if (cluesElement) {
@@ -670,11 +567,6 @@ function resetGame() {
     alert("Your detective progress has been reset!");
 }
 
-
-// ==========================================
-// FINAL REPORT
-// ==========================================
-
 function showReport() {
     const reportSection = document.getElementById("final-report");
 
@@ -682,26 +574,10 @@ function showReport() {
         return;
     }
 
-    const finalScore = document.getElementById("final-score");
-    const finalSolved = document.getElementById("final-solved");
-    const finalAttempted = document.getElementById("final-attempted");
-    const finalRank = document.getElementById("final-rank");
-
-    if (finalScore) {
-        finalScore.textContent = score;
-    }
-
-    if (finalSolved) {
-        finalSolved.textContent = solvedCases;
-    }
-
-    if (finalAttempted) {
-        finalAttempted.textContent = attemptedCases;
-    }
-
-    if (finalRank) {
-        finalRank.textContent = getRank();
-    }
+    document.getElementById("final-score").textContent = score;
+    document.getElementById("final-solved").textContent = solvedCases;
+    document.getElementById("final-attempted").textContent = attemptedCases;
+    document.getElementById("final-rank").textContent = getRank();
 
     reportSection.style.display = "block";
 
@@ -719,10 +595,6 @@ function closeReport() {
     }
 }
 
-
-// ==========================================
-// EVENT LISTENERS
-// ==========================================
 
 function setupEventListeners() {
     const resetButton = document.getElementById("reset-button");
@@ -752,13 +624,23 @@ function setupEventListeners() {
     }
 }
 
-
-// ==========================================
-// INITIALIZE GAME
-// ==========================================
-
 document.addEventListener("DOMContentLoaded", function () {
     setupEventListeners();
+    updateScoreboard();
+    displayAchievements();
+    loadCases();
+});
+function backToCases() {
+    currentCase = null;
+    selectedSuspect = "";
+
+    document.getElementById("game-screen").style.display = "none";
+    document.getElementById("case-menu").style.display = "block";
+
+    loadCases();
+}
+
+document.addEventListener("DOMContentLoaded", function () {
     updateScoreboard();
     displayAchievements();
     loadCases();
